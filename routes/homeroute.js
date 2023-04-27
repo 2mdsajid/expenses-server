@@ -23,16 +23,20 @@ const transporter = nodemailer.createTransport({
 // CREATE A NEW HOME
 router.post('/createhome', async (req, res) => {
   try {
-    const { name, ownerId } = req.body;
-    const homeId = uuidv4(); // generate a unique ID for the home
-    console.log('id', homeId)
+    const { name, ownerId, invitedUsers } = req.body;
+    // const homeId = uuidv4(); // generate a unique ID for the home
+    console.log('id', invitedUsers)
 
     // check if the owner exists
-
-
-    const owner = await User.findById(ownerId);
+    const owner = await User.findById(ownerId).populate('homes', 'name members')
     if (!owner) {
       return res.status(404).json({ message: 'Owner not found' });
+    }
+
+    // ADDING unique id IN INVITED USERS DB
+    for (let i = 0; i < invitedUsers.length; i++) {
+      const invitetoken = uuidv4().replace(/-/g, '');
+      invitedUsers[i].invitetoken = invitetoken;
     }
 
 
@@ -40,8 +44,8 @@ router.post('/createhome', async (req, res) => {
     const newHome = new Home({
       name,
       owner: ownerId,
-      homeId,
-      members: [{ user: ownerId }]
+      members: [{ user: ownerId }],
+      invitedusers: invitedUsers
     });
 
     // save the new home
@@ -51,6 +55,48 @@ router.post('/createhome', async (req, res) => {
     owner.homes.push(savedHome._id);
     await owner.save();
 
+
+    // console.log(invitedUsers)
+
+    // const existingInvitedUsers = await InvitedUsers.findOne({ homeid:newHome._id });
+
+    // const newInvitedUsers = existingInvitedUsers || new InvitedUsers({
+    //   homeid:newHome._id,
+    //   invitedusers: []
+    // });
+
+    // newInvitedUsers.invitedusers.push(...invitedUsers);
+
+    // await newInvitedUsers.save();
+    // const meaning = existingInvitedUsers ? 'updated' : 'created';
+
+    // send email with joining link
+
+    if (savedHome) {
+      invitedUsers.forEach(async (user) => {
+
+        const mailOptions = {
+          from: 'livingasrb007@gmail.com',
+          to: user.email,
+          subject: 'Verify your email address',
+          html: `Mr. ${user.name}, Click <a href="${process.env.BASE_URL}/verifyinvitedusers/${user.invitetoken}-${newHome._id}">here</a> to verify your email address.`,
+        };
+
+        try {
+          await transporter.sendMail(mailOptions);
+          console.log(`Email sent to ${user.email}`);
+        } catch (error) {
+          if (error.message.includes("Invalid recipient")) {
+            console.log(`Wrong email address: ${user.email}`);
+          } else {
+            console.log(error);
+          }
+        }
+      });
+    }
+
+
+    // adding the owner as member
     const member = new Member({
       home: newHome._id,
       user: ownerId,
@@ -58,10 +104,17 @@ router.post('/createhome', async (req, res) => {
     })
     await member.save()
 
+    const hometosend = {
+      _id: savedHome._id,
+      name: savedHome.name,
+      members: savedHome.members,
+      invitedusers: savedHome.invitedusers
+    }
+
     res.status(201).json({
       message: 'New home created successfully',
-      home: savedHome,
-      member: member,
+      home: hometosend,
+      owner: owner,
       status: 201,
       meaning: 'created',
     });
@@ -136,24 +189,20 @@ router.post('/addinvitedusers', async (req, res) => {
   try {
     const { homeid, invitedUsers } = req.body;
 
+    // ADDING unique id IN INVITED USERS DB
     for (let i = 0; i < invitedUsers.length; i++) {
       const invitetoken = uuidv4().replace(/-/g, '');
       invitedUsers[i].invitetoken = invitetoken;
     }
-    
-    console.log(invitedUsers)
 
-    const existingInvitedUsers = await InvitedUsers.findOne({ homeid });
+    console.log('invitedusers', invitedUsers)
 
-    const newInvitedUsers = existingInvitedUsers || new InvitedUsers({
-      homeid,
-      invitedusers: []
-    });
+    const home = await Home.findOne({ _id: homeid });
 
-    newInvitedUsers.invitedusers.push(...invitedUsers);
+    home.invitedusers.push(...invitedUsers);
 
-    await newInvitedUsers.save();
-    const meaning = existingInvitedUsers ? 'updated' : 'created';
+    await home.save();
+    // const meaning = existingInvitedUsers ? 'updated' : 'created';
 
     // send email with joining link
     invitedUsers.forEach(async (user) => {
@@ -179,9 +228,8 @@ router.post('/addinvitedusers', async (req, res) => {
 
     return res.status(201).json({
       message: 'New invited users added successfully',
-      invitedUsers: newInvitedUsers,
-      status: 201,
-      meaning
+      home,
+      status: 201
     });
 
   } catch (err) {
@@ -195,31 +243,55 @@ router.post('/addinvitedusers', async (req, res) => {
 });
 
 // VERIFY INVITED USERS
-router.get('/verifyinvitedusers/:token', async (req, res) => {
+router.post('/verifyinvitedusers', async (req, res) => {
   try {
-    const token = req.params.token;
 
-    console.log(token);
-    const [inviteToken, homeId] = token.split('-');
-    console.log('homeId', homeId);
+    const { token } = req.body
 
-    const invitedUsersDoc = await InvitedUsers.findOne({ homeid: homeId });
-    if (!invitedUsersDoc) {
+    console.log('token', token);
+    const [inviteToken, homeid] = token.split('-');
+    console.log('homeid', homeid);
+
+    const home = await Home.findOne({ _id: homeid });
+    if (!home) {
       return res.status(404).json({ message: 'Home not found' });
     }
 
-    const matchedUser = invitedUsersDoc.invitedusers.find(user => user.invitetoken === inviteToken);
+    const matchedUser = home.invitedusers.find(user => user.invitetoken === inviteToken);
     if (!matchedUser) {
       return res.status(401).json({ message: 'Invalid invitation token' });
     }
 
     matchedUser.status = 'accepted';
-    await invitedUsersDoc.save();
+    await home.save();
 
-    return res.json({ name: matchedUser.name, email: matchedUser.email, homeid:homeId });
+    const inviteduser = {
+      name: matchedUser.name,
+      email: matchedUser.email,
+      homeid: homeid,
+    }
+
+    const user = await User.findOne({ email: matchedUser.email })
+    if (user) {
+      return res.status(201).json({
+        existinguser: true,
+        inviteduser,
+        status: 201
+      });
+    }
+
+    return res.status(201).json({
+      existinguser: false,
+      inviteduser,
+      status: 201
+    });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({
+      message: 'Server error',
+      status: 500
+    });
   }
 });
 

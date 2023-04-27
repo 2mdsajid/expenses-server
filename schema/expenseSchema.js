@@ -21,6 +21,10 @@ const expenseSchema = new mongoose.Schema({
     description: {
         type: String,
         default: ''
+    }, 
+    category: {
+        type: String,
+        default: 'misc'
     },
     date: {
         type: Date,
@@ -39,7 +43,7 @@ const expenseSchema = new mongoose.Schema({
         },
         share: {
             type: Number,
-            default:0
+            default: 0
         }
     }],
     comments: [{
@@ -47,9 +51,13 @@ const expenseSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
         },
-        comment:{
-            type:String,
-            required:true
+        comment: {
+            type: String,
+            required: true
+        },
+        date: {
+            type: Date,
+            default: Date.now
         }
     }]
     // any other relevant data

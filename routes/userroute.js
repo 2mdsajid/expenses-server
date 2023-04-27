@@ -62,11 +62,13 @@ router.post('/signup', upload.single('avatar'), async (req, res) => {
   try {
     const { name, email, password, homeid } = req.body;
 
+    // return console.log(req.body)
+    let user;
     // Check if the user already exists
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
+    // let user = await User.findOne({ email });
+    // if (user) {
+    //   return res.status(400).json({ message: 'User already exists' });
+    // }
 
     // Check if the provided home ID exists
     if (homeid) {
@@ -106,6 +108,20 @@ router.post('/signup', upload.single('avatar'), async (req, res) => {
       },
     });
 
+    // console.log('user',user)
+
+    // login token
+    // console.log(user._id)
+    const logintoken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    console.log('logintoken', user._id)
+
+    // Add JWT token to user's loginTokens array
+    if (logintoken) {
+      console.log(logintoken)
+      user.loginTokens.push({ logintoken: logintoken });
+    }
+
+    console.log(user)
     // Save the user document
     await user.save();
 
@@ -119,7 +135,7 @@ router.post('/signup', upload.single('avatar'), async (req, res) => {
         role: 'member',
         invitationStatus: 'accepted'
       })
-B  
+
       console.log('member', member)
       await member.save()
 
@@ -145,10 +161,12 @@ B
     // Send a verification email
     const mailOptions = {
       from: 'livingasrb007@gmail.com',
-      to: '222mdsasdsfdsdcsdcdsjid@gmail.com',
+      to: email,
       subject: 'Verify your email address',
       html: `Click <a href="${process.env.BASE_URL}/verifyemail/${verificationToken}-${user._id}">here</a> to verify your email address.`,
     };
+
+    console.log(user._id)
 
     transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
@@ -161,19 +179,25 @@ B
         console.log('Email sent: ' + info.response);
       }
     });
-    
-
-
 
     res.status(201).json({
       message: 'User created successfully',
-      user,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        status: user.status,
+        logintoken: logintoken,
+        isverified: user.verification.isVerified,
+        homes: user.homes,
+      },
       status: 201,
       meaning: 'created',
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ status: 500, message: 'Server error' });
   }
 });
 
@@ -181,6 +205,7 @@ B
 // LOGIN REQUEST
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  // return console.log(email)
 
   try {
     // Check if user exists
@@ -204,12 +229,12 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    const logintoken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: '1h'
     });
 
     // Add JWT token to user's loginTokens array
-    user.loginTokens.push({ token });
+    user.loginTokens.push({ logintoken });
 
     // Save user's updated loginTokens array
     await user.save();
@@ -222,11 +247,11 @@ router.post('/login', async (req, res) => {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
-        status: user.status
+        status: user.status,
+        logintoken: logintoken,
+        isverified: user.verification.isVerified,
+        homes: user.homes,
       },
-      token,
-      isverified:user.verification.isVerified,
-      homes: user.homes,
       status: 200,
       meaning: 'ok'
     });
@@ -248,8 +273,16 @@ router.post('/getuserprofile', async (req, res) => {
     // Retrieve the user profile data based on the provided userId
     const user = await User.findById(userId)
       .select('-loginTokens -password -verification.token')
-      .populate('homes', 'name members')
+      .populate({
+        path: 'homes',
+        select: 'name owner members invitedusers',
+        populate: {
+          path: 'owner',
+          select: 'name'
+        }
+      })
       .exec();
+
 
     if (!user) {
       return res.status(404).json({
@@ -276,13 +309,15 @@ router.post('/getuserprofile', async (req, res) => {
 });
 
 // verify email
-router.get('/verifyemail/:token', async (req, res) => {
+router.post('/verifyemail', async (req, res) => {
+
   try {
-    const token = req.params.token;
+    const token = req.body.token;
 
     console.log(token)
+
     const [verificationToken, userId] = token.split('-');
-    console.log('userid',userId)
+    console.log('userid', userId)
 
     const user = await User.findById(userId);
     if (!user) {
@@ -291,14 +326,38 @@ router.get('/verifyemail/:token', async (req, res) => {
 
     if (user.verification.token === verificationToken) {
       user.verification.isVerified = true;
+      const { _id, avatar, email, homes, name, status, verification } = user;
+
+      const userData = {
+        _id,
+        avatar,
+        email,
+        homes,
+        name,
+        status,
+        isVerified: verification.isVerified,
+      };
+
       await user.save();
-      return res.json({ message: 'Email verified successfully' });
+
+      return res.json({
+        status: 200,
+        message: 'Email verified successfully',
+        user: userData
+      });
+
     } else {
-      return res.status(401).json({ message: 'Invalid verification token' });
+      return res.status(401).json({
+        status: 401,
+        message: 'Invalid verification token'
+      });
     }
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({
+      status: 500,
+      message: 'Server error'
+    });
   }
 });
 

@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 
+let app = express()
+const http = require('http');
+const server = http.createServer(app);
+
+const { Server } = require("socket.io");
+
 const { v4: uuidv4 } = require('uuid');
 
 const Home = require('../schema/homeSchema')
@@ -8,10 +14,19 @@ const User = require('../schema/userSchema')
 const Member = require('../schema/memberSchema')
 const Expense = require('../schema/expenseSchema')
 
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+    allowedHeaders: ["my-custom-header"],
+    credentials: true
+  }
+});
+
 
 router.post('/addexpense', async (req, res) => {
   try {
-    const { homeid, item, price, userId, sharing, description } = req.body;
+    const { homeid, item, price, userId, sharing, description, category } = req.body;
 
     // Create new expense
     const newExpense = new Expense({
@@ -27,6 +42,10 @@ router.post('/addexpense', async (req, res) => {
     }
     if (sharing) {
       newExpense.sharing = sharing
+    }
+
+    if (category) {
+      newExpense.category = category
     }
 
     await newExpense.save();
@@ -50,9 +69,16 @@ router.post('/addexpense', async (req, res) => {
 // get expenses by for user
 router.post('/getuserexpenses', async (req, res) => {
   const { userId } = req.body;
+  // console.log(userId)
 
   try {
     const expenses = await Expense.find({ addedby: userId })
+      .populate({
+        path: 'comments.user',
+        select: 'name'
+      });
+
+    // console.log(expenses)
     // .populate('addedby', '-password -loginTokens -verification.token');
 
     res.status(200).json({
@@ -95,6 +121,57 @@ router.post('/gethomeexpenses', async (req, res) => {
     });
   }
 });
+
+
+
+// socket.js
+
+
+
+
+
+// add comments
+router.post('/expenses/addcomments', async (req, res) => {
+  try {
+    const { userId, comment, expenseId } = req.body;
+
+    const expense = await Expense.findById(expenseId);
+
+    if (!expense) {
+      return res.status(404).json({
+        message: 'Expense not found',
+        status: 404,
+        meaning: 'not found'
+      });
+    }
+
+    const newComment = {
+      user: userId,
+      comment: comment
+    };
+
+    expense.comments.push(newComment);
+
+    const addedComment = await expense.save();
+
+    return res.status(201).json({
+      message: 'New comment added successfully',
+      comment: addedComment,
+      status: 201,
+      meaning: 'created'
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: 'Internal server error',
+      status: 500,
+      meaning: 'internal server error'
+    });
+  }
+});
+
+
+
 
 
 

@@ -2,8 +2,11 @@
 let express = require('express')
 const http = require('http');
 let app = express()
+const server = http.createServer(app);
 
-// jbnvm
+const { Server } = require("socket.io");
+
+const Expense = require('./schema/expenseSchema')
 
 // Importing dotenv library to retrieve sensitive information from the .env file
 const dotenv = require('dotenv')
@@ -38,8 +41,43 @@ app.use(require('./routes/userroute'))
 app.use(require('./routes/homeroute'))
 app.use(require('./routes/expenseroute'))
 
-// CREATING SERVER TO RUN
-const server = http.createServer(app);
+
+// socket
+// const {io} = require('./socket.js')
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"],
+        allowedHeaders: ["my-custom-header"],
+        credentials: true
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log('connected')
+
+    socket.on('join-room', (roomName) => {
+        socket.join(roomName);
+        console.log(`Socket ${socket.id} joined room ${roomName}`);
+    });
+
+    socket.on('send-message', (roomName, message) => {
+        console.log('mes received',message)
+        io.to(roomName).emit('receive-msg', message);
+    });
+
+
+    socket.on('addcomment', (newcomment) => {
+        console.log(newcomment)
+
+        socket.emit('update-comment', { data: newcomment });
+
+    });
+
+
+})
+
+// const server = http.createServer(app);
 
 server.listen(PORT, () => console.log(`Listening on PORT ${PORT}`));
 

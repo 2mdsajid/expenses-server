@@ -11,15 +11,29 @@ const homeSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     },
-    homeId: {
-        type: String,
-        required: true,
-        unique: true
-    },
     members: [{
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
+        }
+    }],
+    invitedusers: [{
+        name: {
+            type: String,
+        },
+        email: {
+            type: String,
+            lowercase: true,
+        },
+        invitetoken: {
+            type: String,
+            required: true,
+            lowercase: true,
+        },
+        status: {
+            type: String,
+            enum: ['accepted', 'pending', 'rejected'],
+            default: 'pending',
         }
     }],
     totalExpenses: [{
