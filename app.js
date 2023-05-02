@@ -49,7 +49,7 @@ app.use(require('./routes/expenseroute'))
 
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: "https://homesplit.netlify.app",
         methods: ["GET", "POST"],
         allowedHeaders: ["my-custom-header"],
         credentials: true
