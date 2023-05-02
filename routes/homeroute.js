@@ -28,9 +28,9 @@ router.post('/createhome', async (req, res) => {
     console.log('id', invitedUsers)
 
     // check if the owner exists
-    const owner = await User.findById(ownerId).populate('homes', 'name members')
+    const owner = await User.findById(ownerId)
     if (!owner) {
-      return res.status(404).json({ message: 'Owner not found' });
+      return res.status(404).json({ message: 'User not found! please login' });
     }
 
     // ADDING unique id IN INVITED USERS DB
@@ -78,8 +78,21 @@ router.post('/createhome', async (req, res) => {
         const mailOptions = {
           from: 'livingasrb007@gmail.com',
           to: user.email,
-          subject: 'Verify your email address',
-          html: `Mr. ${user.name}, Click <a href="${process.env.BASE_URL}/verifyinvitedusers/${user.invitetoken}-${newHome._id}">here</a> to verify your email address.`,
+          subject: 'You\'re invited to join Home Split!',
+          html: `<div style="background-color:#F8FAFC;padding:32px">
+                  <div style="background-color:#FFFFFF;border-radius:16px;padding:32px;text-align:center">
+                    <img src="https://example.com/logo.png" alt="Home Split Logo" style="width: 128px">
+                    <h2 style="font-size:28px;font-weight:bold;margin:24px 0 16px">You're invited to join Home Split!</h2>
+                    <p style="font-size:16px;margin-bottom:32px">
+                      Hi ${user.name},<br>
+                      You've been invited to join Home Split by ${owner.name}. Please click the button below to accept the invitation.
+                    </p>
+                    <a href="${process.env.BASE_URL}/verifyinvitedusers/${user.invitetoken}-${savedHome._id}"
+                       style="display:inline-block;background-color:#6C63FF;color:#FFFFFF;font-weight:bold;font-size:16px;padding:16px 32px;border-radius:8px;text-decoration:none;cursor:pointer">
+                      Accept Invitation
+                    </a>
+                  </div>
+                </div>`,
         };
 
         try {
@@ -104,20 +117,38 @@ router.post('/createhome', async (req, res) => {
     })
     await member.save()
 
-    const hometosend = {
-      _id: savedHome._id,
-      name: savedHome.name,
-      members: savedHome.members,
-      invitedusers: savedHome.invitedusers
-    }
+    // const hometosend = {
+    //   _id: savedHome._id,
+    //   name: savedHome.name,
+    //   members: savedHome.members,
+    //   invitedusers: savedHome.invitedusers
+    // }
+
+    const updateduser = await User.findById(ownerId)
+      .select('-loginTokens -password -verification.token')
+      .populate({
+        path: 'homes',
+        select: 'name owner members invitedusers',
+        populate: [
+          {
+            path: 'owner',
+            select: 'name'
+          },
+          {
+            path: 'members.user',
+            select: 'name'
+          }
+        ]
+      })
+      .exec();
 
     res.status(201).json({
       message: 'New home created successfully',
-      home: hometosend,
-      owner: owner,
+      updateduser,
       status: 201,
       meaning: 'created',
     });
+
   } catch (error) {
     console.error(error.message);
     res.status(500).json({ message: 'Server error' });
@@ -128,20 +159,20 @@ router.post('/createhome', async (req, res) => {
 // JOIN HOME FROM HOME-ID not LINK
 router.post('/joinhomeviaid', async (req, res) => {
   try {
-    const { homeid, userId } = req.body;
+    const { homeid, userid } = req.body;
 
     // Check if the home exists
     const home = await Home.findById(homeid);
     if (!home) {
       return res.status(404).json({
-        message: 'Home not found',
+        message: 'Invalid home-ID ',
         status: 404,
         meaning: 'not found'
       });
     }
 
     // Check if the user exists
-    const user = await User.findById(userId);
+    const user = await User.findById(userid)
     if (!user) {
       return res.status(404).json({
         message: 'User not found',
@@ -157,10 +188,20 @@ router.post('/joinhomeviaid', async (req, res) => {
       role: 'member',
       invitationStatus: 'none'
     });
+
     await member.save();
     console.log('member', member)
 
     // Add the member to the Home collection
+    const userinhome = home.members.some(member => member.user.toString() === userid);
+    if (userinhome) {
+      return res.status(400).json({
+        message: 'User already a member',
+        status: 400,
+        meaning: 'bad request'
+      });
+    }
+
     home.members.push({ user: user._id });
     await home.save();
     console.log('home', home)
@@ -169,11 +210,32 @@ router.post('/joinhomeviaid', async (req, res) => {
     await user.save()
     console.log('user', user)
 
-    return res.status(200).json({
-      message: 'New member added successfully',
-      status: 200,
-      meaning: 'ok'
+    const updateduser = await User.findById(userid)
+      .select('-loginTokens -password -verification.token')
+      .populate({
+        path: 'homes',
+        select: 'name owner members invitedusers',
+        populate: [
+          {
+            path: 'owner',
+            select: 'name'
+          },
+          {
+            path: 'members.user',
+            select: 'name'
+          }
+        ]
+      })
+      .exec();
+
+    return res.status(201).json({
+      message: 'successfully joined home',
+      status: 201,
+      meaning: 'created',
+      updateduser,
+      homeid: home._id
     });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({
@@ -189,15 +251,25 @@ router.post('/addinvitedusers', async (req, res) => {
   try {
     const { homeid, invitedUsers } = req.body;
 
+    const home = await Home.findOne({ _id: homeid }).populate('members.user', 'name').populate('owner', 'name')
+
     // ADDING unique id IN INVITED USERS DB
     for (let i = 0; i < invitedUsers.length; i++) {
       const invitetoken = uuidv4().replace(/-/g, '');
       invitedUsers[i].invitetoken = invitetoken;
+
+      const isEmailPresent = home.invitedusers.find((user) => user.email === invitedUsers[i].email);
+      if (isEmailPresent) {
+        return res.status(400).json({
+          message: `${invitedUsers[i].email} is already a member or invited`,
+          status: 400
+        });
+      }
+
     }
 
     console.log('invitedusers', invitedUsers)
 
-    const home = await Home.findOne({ _id: homeid });
 
     home.invitedusers.push(...invitedUsers);
 
@@ -210,9 +282,23 @@ router.post('/addinvitedusers', async (req, res) => {
       const mailOptions = {
         from: 'livingasrb007@gmail.com',
         to: user.email,
-        subject: 'Verify your email address',
-        html: `Click <a href="${process.env.BASE_URL}/verifyinvitedusers/${user.invitetoken}-${homeid}">here</a> to verify your email address.`,
+        subject: 'You\'re invited to join Home Split!',
+        html: `<div style="background-color:#F8FAFC;padding:32px">
+                <div style="background-color:#FFFFFF;border-radius:16px;padding:32px;text-align:center">
+                  <img src="https://example.com/logo.png" alt="Home Split Logo" style="width: 128px">
+                  <h2 style="font-size:28px;font-weight:bold;margin:24px 0 16px">You're invited to join Home Split!</h2>
+                  <p style="font-size:16px;margin-bottom:32px">
+                    Hi ${user.name},<br>
+                    You've been invited to join Home Split by ${home.owner.name}. Please click the button below to accept the invitation.
+                  </p>
+                  <a href="${process.env.BASE_URL}/verifyinvitedusers/${user.invitetoken}-${homeid}"
+                     style="display:inline-block;background-color:#6C63FF;color:#FFFFFF;font-weight:bold;font-size:16px;padding:16px 32px;border-radius:8px;text-decoration:none;cursor:pointer">
+                    Accept Invitation
+                  </a>
+                </div>
+              </div>`,
       };
+
 
       try {
         await transporter.sendMail(mailOptions);
@@ -273,6 +359,12 @@ router.post('/verifyinvitedusers', async (req, res) => {
 
     const user = await User.findOne({ email: matchedUser.email })
     if (user) {
+
+      // Add the member to the Home collection
+      home.members.push({ user: user._id });
+      await home.save();
+      console.log('user added to members list')
+
       return res.status(201).json({
         existinguser: true,
         inviteduser,
@@ -316,6 +408,7 @@ router.post('/gethomeinfo', async (req, res) => {
       status: 200,
       meaning: 'success'
     });
+
   } catch (error) {
     console.log(error);
     res.status(500).json({

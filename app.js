@@ -41,9 +41,12 @@ app.use(require('./routes/userroute'))
 app.use(require('./routes/homeroute'))
 app.use(require('./routes/expenseroute'))
 
+// const io = require('./routes/socket.js')
+// console.log(io)
 
-// socket
-// const {io} = require('./socket.js')
+// myFunction()
+
+
 const io = new Server(server, {
     cors: {
         origin: "http://localhost:3000",
@@ -53,29 +56,29 @@ const io = new Server(server, {
     }
 });
 
-io.on('connection', (socket) => {
-    console.log('connected')
+const ss = require('./routes/socket')(io)
 
-    socket.on('join-room', (roomName) => {
-        socket.join(roomName);
-        console.log(`Socket ${socket.id} joined room ${roomName}`);
-    });
+// io.on('connection', (socket) => {
+//     console.log('connected in appjs')
 
-    socket.on('send-message', (roomName, message) => {
-        console.log('mes received',message)
-        io.to(roomName).emit('receive-msg', message);
-    });
+//     socket.on('join-room', (roomName) => {
+//         socket.join(roomName);
+//         console.log(`Socket ${socket.id} joined room ${roomName}`);
+//     });
 
-
-    socket.on('addcomment', (newcomment) => {
-        console.log(newcomment)
-
-        socket.emit('update-comment', { data: newcomment });
-
-    });
+//     socket.on('send-message', (roomName, message) => {
+//         console.log('mes received', message)
+//         io.to(roomName).emit('receive-msg', message);
+//     });
 
 
-})
+//     socket.on('addcomment', (newcomment) => {
+//         console.log(newcomment)
+//         socket.emit('update-comment', { data: newcomment });
+//     });
+// })
+
+
 
 // const server = http.createServer(app);
 

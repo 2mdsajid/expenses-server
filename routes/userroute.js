@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
+const textbelt = require('textbelt');
 
 const User = require('../schema/userSchema');
 const Home = require('../schema/homeSchema')
@@ -62,18 +63,16 @@ router.post('/signup', upload.single('avatar'), async (req, res) => {
   try {
     const { name, email, password, homeid } = req.body;
 
-    // return console.log(req.body)
-    let user;
+
     // Check if the user already exists
-    // let user = await User.findOne({ email });
-    // if (user) {
-    //   return res.status(400).json({ message: 'User already exists' });
-    // }
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({ message: 'User exists' });
+    }
 
     // Check if the provided home ID exists
     if (homeid) {
       let home = await Home.findById(homeid);
-      console.log('home exist')
       if (!home) {
         return res.status(400).json({ message: 'Invalid home ID' });
       }
@@ -152,7 +151,7 @@ router.post('/signup', upload.single('avatar'), async (req, res) => {
       // adding to home also
       let home = await Home.findById(homeid);
       home.members.push({ user: user._id })
-      console.log('home', home)
+      console.log('added to home member list')
       await home.save()
 
     }
@@ -163,8 +162,24 @@ router.post('/signup', upload.single('avatar'), async (req, res) => {
       from: 'livingasrb007@gmail.com',
       to: email,
       subject: 'Verify your email address',
-      html: `Click <a href="${process.env.BASE_URL}/verifyemail/${verificationToken}-${user._id}">here</a> to verify your email address.`,
+      html: `
+        <div style="background-color:#F8FAFC;padding:32px">
+          <div style="background-color:#FFFFFF;border-radius:16px;padding:32px;text-align:center">
+            <img src="https://example.com/logo.png" alt="Home Split Logo" style="width: 128px">
+            <h2 style="font-size:28px;font-weight:bold;margin:24px 0 16px">Verify your email address</h2>
+            <p style="font-size:16px;margin-bottom:32px">
+              Hi ${user.name},<br>
+              Thanks for signing up for Home Split! Please click the button below to verify your email address.
+            </p>
+            <a href="${process.env.BASE_URL}/verifyemail/${verificationToken}-${user._id}"
+               style="display:inline-block;background-color:#6C63FF;color:#FFFFFF;font-weight:bold;font-size:16px;padding:16px 32px;border-radius:8px;text-decoration:none;cursor:pointer">
+              Verify Email Address
+            </a>
+          </div>
+        </div>
+      `,
     };
+
 
     console.log(user._id)
 
@@ -244,17 +259,12 @@ router.post('/login', async (req, res) => {
       message: 'Login successful',
       user: {
         _id: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        status: user.status,
         logintoken: logintoken,
-        isverified: user.verification.isVerified,
-        homes: user.homes,
       },
       status: 200,
       meaning: 'ok'
     });
+
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -276,13 +286,18 @@ router.post('/getuserprofile', async (req, res) => {
       .populate({
         path: 'homes',
         select: 'name owner members invitedusers',
-        populate: {
-          path: 'owner',
-          select: 'name'
-        }
+        populate: [
+          {
+            path: 'owner',
+            select: 'name'
+          },
+          {
+            path: 'members.user',
+            select: 'name'
+          }
+        ]
       })
       .exec();
-
 
     if (!user) {
       return res.status(404).json({

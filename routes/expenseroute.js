@@ -14,26 +14,26 @@ const User = require('../schema/userSchema')
 const Member = require('../schema/memberSchema')
 const Expense = require('../schema/expenseSchema')
 
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["my-custom-header"],
-    credentials: true
-  }
-});
+// const io = new Server(server, {
+//   cors: {
+//     origin: "http://localhost:3000",
+//     methods: ["GET", "POST"],
+//     allowedHeaders: ["my-custom-header"],
+//     credentials: true
+//   }
+// });
 
 
 router.post('/addexpense', async (req, res) => {
   try {
-    const { homeid, item, price, userId, sharing, description, category } = req.body;
+    const { homeid, item, price, userid, sharing, description, category } = req.body;
 
     // Create new expense
     const newExpense = new Expense({
       home: homeid,
       item,
       price,
-      addedby: userId
+      addedby: userid
     });
 
     // Add description and sharing if they are present in the request
@@ -73,10 +73,11 @@ router.post('/getuserexpenses', async (req, res) => {
 
   try {
     const expenses = await Expense.find({ addedby: userId })
-      .populate({
-        path: 'comments.user',
-        select: 'name'
-      });
+    .populate({
+      path: 'comments.user',
+      select: 'name'
+    })
+      .populate('addedby', 'name avatar').exec();
 
     // console.log(expenses)
     // .populate('addedby', '-password -loginTokens -verification.token');
@@ -104,7 +105,10 @@ router.post('/gethomeexpenses', async (req, res) => {
 
   try {
     const expenses = await Expense.find({ home: homeId })
-    // .populate('addedBy', 'name avatar email _id').exec();
+    .populate({
+      path: 'addedby',
+      select: 'name'
+    })
 
     res.status(200).json({
       message: 'Expenses retrieved successfully',
@@ -124,8 +128,28 @@ router.post('/gethomeexpenses', async (req, res) => {
 
 
 
-// socket.js
+// // socket.js
+// io.on('connection', (socket) => {
+//   console.log('connected to expense route')
 
+//   socket.on('join-room', (roomName) => {
+//       socket.join(roomName);
+//       console.log(`Socket ${socket.id} joined room ${roomName}`);
+//   });
+
+//   socket.on('send-message', (roomName, message) => {
+//       console.log('mes received', message)
+//       io.to(roomName).emit('receive-msg', message);
+//   });
+
+
+//   socket.on('addcomment', (newcomment) => {
+//       console.log(newcomment)
+
+//       socket.emit('update-comment', { data: newcomment });
+
+//   });
+// })
 
 
 
@@ -160,6 +184,7 @@ router.post('/expenses/addcomments', async (req, res) => {
       status: 201,
       meaning: 'created'
     });
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -169,10 +194,6 @@ router.post('/expenses/addcomments', async (req, res) => {
     });
   }
 });
-
-
-
-
 
 
 module.exports = router;
