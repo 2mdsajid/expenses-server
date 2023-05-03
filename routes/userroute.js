@@ -287,7 +287,7 @@ router.post('/getuserprofile', async (req, res) => {
       .select('-loginTokens -password -verification.token')
       .populate({
         path: 'homes',
-        select: 'name owner members invitedusers',
+        select: 'name owner members invitedusers comments',
         populate: [
           {
             path: 'owner',
@@ -296,10 +296,6 @@ router.post('/getuserprofile', async (req, res) => {
           {
             path: 'members.user',
             select: 'name'
-          },
-          {
-            path:'comments.user',
-            select:'name'
           }
         ]
       })
@@ -319,11 +315,12 @@ router.post('/getuserprofile', async (req, res) => {
       status: 200,
       meaning: 'ok'
     });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
     res.status(500).json({
       message: 'Server error',
       status: 500,
+      err:error.message,
       meaning: 'internal server error'
     });
   }
