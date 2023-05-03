@@ -38,6 +38,7 @@ cloudinary.config({
   api_secret: 'nnvB3I1oDJI5dDutlXIQ7ECE6H4'
 });
 
+
 // Set up multer storage settings
 const DIR = './public/';
 const uploadDir = `${DIR}uploads/`;
@@ -275,6 +276,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
+
 // getting user profile
 router.post('/getuserprofile', async (req, res) => {
   try {
@@ -294,6 +296,10 @@ router.post('/getuserprofile', async (req, res) => {
           {
             path: 'members.user',
             select: 'name'
+          },
+          {
+            path:'comments.user',
+            select:'name'
           }
         ]
       })

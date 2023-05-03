@@ -23,6 +23,17 @@ const Expense = require('../schema/expenseSchema')
 //   }
 // });
 
+// pusher setup
+// const Pusher = require("pusher");
+
+// const pusher = new Pusher({
+//   appId: "1594316",
+//   key: "f594af9f3392d531de1f",
+//   secret: "be2783858206674c1136",
+//   cluster: "ap2",
+//   useTLS: true
+// });
+
 
 router.post('/addexpense', async (req, res) => {
   try {
@@ -50,12 +61,30 @@ router.post('/addexpense', async (req, res) => {
 
     await newExpense.save();
 
+    const expenses = await Expense.find({ home: homeid })
+      .populate({
+        path: 'addedby',
+        select: 'name'
+      })
+
+    const userexpenses = await Expense.find({ addedby: userid })
+      .populate({
+        path: 'comments.user',
+        select: 'name'
+      })
+      .populate('addedby', 'name avatar').exec();
+
+
+
     return res.status(201).json({
       message: 'New expense added successfully',
-      expense: newExpense,
+      homeid,
+      home: expenses,
+      user: userexpenses,
       status: 201,
       meaning: 'created'
     });
+
   } catch (err) {
     console.error(err);
     return res.status(500).json({
@@ -73,10 +102,10 @@ router.post('/getuserexpenses', async (req, res) => {
 
   try {
     const expenses = await Expense.find({ addedby: userId })
-    .populate({
-      path: 'comments.user',
-      select: 'name'
-    })
+      .populate({
+        path: 'comments.user',
+        select: 'name'
+      })
       .populate('addedby', 'name avatar').exec();
 
     // console.log(expenses)
@@ -105,10 +134,14 @@ router.post('/gethomeexpenses', async (req, res) => {
 
   try {
     const expenses = await Expense.find({ home: homeId })
-    .populate({
-      path: 'addedby',
-      select: 'name'
-    })
+      .populate({
+        path: 'addedby',
+        select: 'name'
+      })
+      .populate({
+        path: 'comments.user',
+        select: 'name'
+      })
 
     res.status(200).json({
       message: 'Expenses retrieved successfully',
@@ -128,38 +161,12 @@ router.post('/gethomeexpenses', async (req, res) => {
 
 
 
-// // socket.js
-// io.on('connection', (socket) => {
-//   console.log('connected to expense route')
-
-//   socket.on('join-room', (roomName) => {
-//       socket.join(roomName);
-//       console.log(`Socket ${socket.id} joined room ${roomName}`);
-//   });
-
-//   socket.on('send-message', (roomName, message) => {
-//       console.log('mes received', message)
-//       io.to(roomName).emit('receive-msg', message);
-//   });
-
-
-//   socket.on('addcomment', (newcomment) => {
-//       console.log(newcomment)
-
-//       socket.emit('update-comment', { data: newcomment });
-
-//   });
-// })
-
-
-
-
 // add comments
 router.post('/expenses/addcomments', async (req, res) => {
   try {
     const { userId, comment, expenseId } = req.body;
 
-    const expense = await Expense.findById(expenseId);
+    const expense = await Expense.findById(expenseId)
 
     if (!expense) {
       return res.status(404).json({
@@ -175,12 +182,18 @@ router.post('/expenses/addcomments', async (req, res) => {
     };
 
     expense.comments.push(newComment);
+    await expense.save();
 
-    const addedComment = await expense.save();
+    
+    const newexp = await Expense.findById(expenseId).populate('comments.user', 'name')
+    
+    // pusher.trigger("comment", "get-comment", {
+    //   newexp
+    // });
 
     return res.status(201).json({
       message: 'New comment added successfully',
-      comment: addedComment,
+      newexp,
       status: 201,
       meaning: 'created'
     });

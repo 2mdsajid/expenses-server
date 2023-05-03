@@ -41,42 +41,20 @@ app.use(require('./routes/userroute'))
 app.use(require('./routes/homeroute'))
 app.use(require('./routes/expenseroute'))
 
-// const io = require('./routes/socket.js')
-// console.log(io)
-
-// myFunction()
 
 
-const io = new Server(server, {
-    cors: {
-        origin: "https://homesplit.netlify.app",
-        methods: ["GET", "POST"],
-        allowedHeaders: ["my-custom-header"],
-        credentials: true
-    }
-});
 
-const ss = require('./routes/socket')(io)
+// const io = new Server(server, {
+//     cors: {
+//         origin: "https://homesplit.netlify.app",
+//         methods: ["GET", "POST"],
+//         allowedHeaders: ["my-custom-header"],
+//         credentials: true
+//     }
+// });
 
-// io.on('connection', (socket) => {
-//     console.log('connected in appjs')
+// const ss = require('./routes/socket')(io)
 
-//     socket.on('join-room', (roomName) => {
-//         socket.join(roomName);
-//         console.log(`Socket ${socket.id} joined room ${roomName}`);
-//     });
-
-//     socket.on('send-message', (roomName, message) => {
-//         console.log('mes received', message)
-//         io.to(roomName).emit('receive-msg', message);
-//     });
-
-
-//     socket.on('addcomment', (newcomment) => {
-//         console.log(newcomment)
-//         socket.emit('update-comment', { data: newcomment });
-//     });
-// })
 
 
 

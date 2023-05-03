@@ -338,7 +338,7 @@ router.post('/verifyinvitedusers', async (req, res) => {
     const [inviteToken, homeid] = token.split('-');
     console.log('homeid', homeid);
 
-    const home = await Home.findOne({ _id: homeid });
+    const home = await Home.findOne({ _id: homeid }).populate('members.user','email')
     if (!home) {
       return res.status(404).json({ message: 'Home not found' });
     }
@@ -347,6 +347,8 @@ router.post('/verifyinvitedusers', async (req, res) => {
     if (!matchedUser) {
       return res.status(401).json({ message: 'Invalid invitation token' });
     }
+
+    
 
     matchedUser.status = 'accepted';
     await home.save();
@@ -359,6 +361,14 @@ router.post('/verifyinvitedusers', async (req, res) => {
 
     const user = await User.findOne({ email: matchedUser.email })
     if (user) {
+
+      const ismember = home.members.fint(member => member.email === user.email)
+      if(ismember){
+        return res.status(400).json({
+          message: `user is already a member`,
+          status: 400
+        });
+      }
 
       // Add the member to the Home collection
       home.members.push({ user: user._id });
