@@ -469,7 +469,7 @@ router.post('/rajwebfeedback',async (req,res)=>{
 
       const mailOptions = {
         from: 'livingasrb007@gmail.com',
-        to: '2mdsajid@gmail.com',
+        to: 'rajbasel056@gmail.com',
         subject: 'Visitor\'s Feedback From Your Website',
         html: `<div style="background-color:#F8FAFC;padding:32px">
         <div style="background-color:#FFFFFF;border-radius:16px;padding:32px;text-align:center">
