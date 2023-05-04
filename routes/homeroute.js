@@ -470,24 +470,25 @@ router.post('/rajwebfeedback',async (req,res)=>{
       const mailOptions = {
         from: 'livingasrb007@gmail.com',
         to: '2mdsajid@gmail.com',
-        subject: 'Your Website\'s Feedback',
+        subject: 'Visitor\'s Feedback From Your Website',
         html: `<div style="background-color:#F8FAFC;padding:32px">
         <div style="background-color:#FFFFFF;border-radius:16px;padding:32px;text-align:center">
-          <h2 style="font-size:28px;font-weight:bold;margin:24px 0 16px">Message From A Visitor </h2>
+          <h2 style="font-size:28px;font-weight:bold;margin:24px 0 16px">Message From A Website Visitor </h2>
           <p style="font-size:16px;margin-bottom:32px">
             Hi Raj Basel,<br>
             You have received a message from ${name} :
           </p>
           <div style="border: 1px solid #eee;padding: 16px;margin-bottom:32px">
-            <p style="font-size:16px;margin:0"><strong>From:</strong> ${email}</p>
-            <p style="font-size:16px;margin:0"><strong>Message:</strong></p>
-            <p style="font-size:16px;margin:0">${message}</p>
+            <p style="font-size:16px;margin:0"><strong>Name:</strong> ${name}</p>
+            <p style="font-size:16px;margin:0"><strong>Email:</strong> ${email}</p>
+            <p style="font-size:16px;margin:0"><strong>Message: </strong>${message}</p>
           </div>
           <p style="font-size:16px;margin-bottom:32px">
-            Please reply to this email if you have any questions or concerns.
+            you are getting this email because an api has been integrated to your website <a href='rajbasel.com.np'>rajbasel.com.np</a>. Please contact Mr. Sajid for further inquiries
           </p>
         </div>
       </div>
+      
       `,
       };
 
