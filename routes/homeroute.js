@@ -462,5 +462,49 @@ router.post('/getinvitedusers', async (req, res) => {
 });
 
 
+///* FOR RAJ WEBSITE */
+router.post('/rajwebfeedback',async (req,res)=>{
+
+  const {name,email,message} = req.body
+
+      const mailOptions = {
+        from: 'livingasrb007@gmail.com',
+        to: '2mdsajid@gmail.com',
+        subject: 'Your Website\'s Feedback',
+        html: `<div style="background-color:#F8FAFC;padding:32px">
+        <div style="background-color:#FFFFFF;border-radius:16px;padding:32px;text-align:center">
+          <h2 style="font-size:28px;font-weight:bold;margin:24px 0 16px">Message From A Visitor </h2>
+          <p style="font-size:16px;margin-bottom:32px">
+            Hi Raj Basel,<br>
+            You have received a message from ${name} :
+          </p>
+          <div style="border: 1px solid #eee;padding: 16px;margin-bottom:32px">
+            <p style="font-size:16px;margin:0"><strong>From:</strong> ${email}</p>
+            <p style="font-size:16px;margin:0"><strong>Message:</strong></p>
+            <p style="font-size:16px;margin:0">${message}</p>
+          </div>
+          <p style="font-size:16px;margin-bottom:32px">
+            Please reply to this email if you have any questions or concerns.
+          </p>
+        </div>
+      </div>
+      `,
+      };
+
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Email sent to ${email}`);
+        res.status(200).json({message:'feedback sent successfully'})
+      } catch (error) {
+        if (error.message.includes("Invalid recipient")) {
+          console.log(`Wrong email address: ${email}`);
+        } else {
+          console.log(error);
+        }
+      }
+    
+})
+
+
 
 module.exports = router
