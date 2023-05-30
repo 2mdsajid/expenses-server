@@ -362,7 +362,7 @@ router.post('/verifyinvitedusers', async (req, res) => {
     const user = await User.findOne({ email: matchedUser.email })
     if (user) {
 
-      const ismember = home.members.fint(member => member.email === user.email)
+      const ismember = home.members.find(member => member.email === user.email)
       if(ismember){
         return res.status(400).json({
           message: `user is already a member`,
