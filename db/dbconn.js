@@ -19,6 +19,3 @@ mongoose.connect(DB).then(()=>{
 }).catch((err)=>{console.log('error while connecting to database')})
 
 module.exports = mongoose.connection;
-
-
-// mongoimport --uri mongodb+srv://2mdsajid:UDkWosAVB0rbfpzh@cluster0.qzob3kp.mongodb.net/med-loc-1 --collection chemistries --type json --file "C:\Users\sajid aalam\Downloads\chem.json" --jsonArray

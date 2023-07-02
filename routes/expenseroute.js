@@ -14,27 +14,6 @@ const User = require('../schema/userSchema')
 const Member = require('../schema/memberSchema')
 const Expense = require('../schema/expenseSchema')
 
-// const io = new Server(server, {
-//   cors: {
-//     origin: "http://localhost:3000",
-//     methods: ["GET", "POST"],
-//     allowedHeaders: ["my-custom-header"],
-//     credentials: true
-//   }
-// });
-
-// pusher setup
-// const Pusher = require("pusher");
-
-// const pusher = new Pusher({
-//   appId: "1594316",
-//   key: "f594af9f3392d531de1f",
-//   secret: "be2783858206674c1136",
-//   cluster: "ap2",
-//   useTLS: true
-// });
-
-
 router.post('/addexpense', async (req, res) => {
   try {
     const { homeid, item, price, userid, sharing, description, category } = req.body;

@@ -33,9 +33,9 @@ const transporter = nodemailer.createTransport({
 
 // Configure cloudinary
 cloudinary.config({
-  cloud_name: 'dww0rxb4q',
-  api_key: '459624268647755',
-  api_secret: 'nnvB3I1oDJI5dDutlXIQ7ECE6H4'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 
